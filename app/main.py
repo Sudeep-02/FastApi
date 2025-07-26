@@ -1,79 +1,75 @@
-from typing import Optional
-from fastapi import FastAPI, Response,status,HTTPException
+from typing import Optional,List
+from fastapi import FastAPI, Response,status,HTTPException, Depends
 from fastapi.params import Body
 from pydantic import BaseModel
 from random import randrange
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import time
-
+from sqlmodel import SQLModel, select,Session
+from .database import engine, get_session
+from .model import Post,PostCreate,PostUpdate
 
 app = FastAPI()
-
-
-class Post(BaseModel):
-    title: str
-    content: str
-    published: bool = True
    
-   
-while True:   
-    try:
-        conn = psycopg2.connect(host='localhost',database='fastapi', user='postgres', password='9362',cursor_factory=RealDictCursor)
-        cursor = conn.cursor()
-        print("Database connection was succesfull!")
-        break
-    except Exception as error:
-        print("Connecting to database failed")
-        print("Error :", error)
-        time.sleep(5)
+def create_db_and_tables():
+  SQLModel.metadata.create_all(engine) 
+
+create_db_and_tables()
     
 @app.get("/")
 def root():
-    
     return {"message": "Hello world !"}
 
-@app.get("/posts")
-def get_posts():
-    cursor.execute("""SELECT * FROM posts""")
-    posts = cursor.fetchall()
+#get all posts
+@app.get("/posts", response_model=List[Post])
+def get_posts(session: Session = Depends(get_session)):
+    # Make a SELECT query for all posts
+    statement = select(Post)
+    results = session.exec(statement) # here result is object not data and this can be used in next as medium to get all or single data
+    posts = results.all()  # This returns a list of Post objects
     print(posts)
-    return {"data" : posts}
+    return posts  # FastAPI/SQLModel automatically converts Post objects to dict for JSON
 
+#Create a post
+@app.post("/posts", response_model=Post, status_code=status.HTTP_201_CREATED)
+def create_post(post: PostCreate, session: Session = Depends(get_session)):
+    db_post = Post.from_orm(post)
+    session.add(db_post)
+    session.commit()
+    session.refresh(db_post)
+    return db_post
 
-@app.post("/posts",status_code=status.HTTP_201_CREATED)
-def create_posts(post:Post):
-    cursor.execute("""INSERT INTO posts (title,content,published) VALUES (%s, %s, %s) RETURNING *""",
-                   (post.title,post.content,post.published))
-    new_post = cursor.fetchone()
-    conn.commit()
-    return {"data":new_post}
-
-
-@app.get("/posts/{id}")
-def get_post(id:int):
-    cursor.execute("""SELECT * from  posts where id = %s""",(str(id))) # id recieved is int from post model and sql query is str
-    get_post = cursor.fetchone()
-    print(get_post)
-    if not get_post:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail= f"post with id: {id} was not found")
-    return {"data": get_post}
-
-@app.delete("/posts/{id}")
-def delete_post(id:int):
-     cursor.execute("""DELETE FROM posts WHERE id = %s""", (id,))
-     conn.commit()
-     if cursor.rowcount == 0:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"post with id: {id} was not found")
-     return {"message":"Post was successfully deleted"}
+# get single post
+@app.get("/posts/{post_id}",response_model=Post)
+def get_post(post_id:int,session : Session = Depends(get_session)):
+    db_post = session.get(Post,post_id)
+    if not db_post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+    return db_post
+   
+#delete post
+@app.delete("/posts/{post_id}",status_code=status.HTTP_204_NO_CONTENT)
+def delete_post(post_id:int,session :Session = Depends(get_session)):
+    post = session.get(Post,post_id)
+    if not post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+    session.delete(post)
+    session.commit()   
+    return #line one will return message
  
-@app.put("/posts/{id}")
-def update_post(id:int,post:Post):
-     cursor.execute("""UPDATE posts  SET title = %s, content = %s, published = %s   WHERE id = %s RETURNING *""", (post.title,post.content,post.published,id))
-     updated_post = cursor.fetchone()
-     conn.commit()
-     if cursor.rowcount == 0:
-        conn.rollback()
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"post with id: {id} was not found")
-     return {"data": updated_post}
-     
+ #update post
+@app.put("/posts/{post_id}",response_model=Post)
+def update_post(post_id:int,post_update:PostUpdate,session:Session = Depends(get_session)):
+    db_post = session.get(Post,post_id)
+    if not db_post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+    #update only fields that are passed in
+    post_data = post_update.dict(exclude_unset=True)
+    for key, value in post_data.items():
+        setattr(db_post, key, value)
+    session.add(db_post)
+    session.commit()
+    session.refresh(db_post)
+    return db_post
+
