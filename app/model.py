@@ -3,6 +3,7 @@
 from typing import Optional
 from sqlmodel import SQLModel, Field
 from datetime import datetime, timezone, timedelta
+from pydantic import EmailStr, BaseModel
 
 IST = timezone(timedelta(hours=5, minutes=30))
 
@@ -30,3 +31,17 @@ class PostCreate(PostBase):
 class PostUpdate(ForbidExtraBase):
     title : Optional[str] = None
     content : Optional[str] = None
+    
+class User(ForbidExtraBase,table=True):
+    id : Optional[int] = Field(default=None, primary_key=True) 
+    email : str = Field(unique=True)
+    password : str
+    created_at: datetime = Field(default_factory=now_ist) 
+
+class UserCreate(ForbidExtraBase):
+    email : EmailStr
+    password : str
+
+class UserOut(BaseModel):
+    id : int
+    email : EmailStr
