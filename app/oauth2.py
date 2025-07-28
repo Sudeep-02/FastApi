@@ -39,6 +39,8 @@ def verify_access_token(token:str,credentials_exception):
     return token_data
     
 def get_current_user(token:str = Depends(oauth2_scheme),session: Session = Depends(get_session)):
+    # (token: Annotated[str, Depends(oauth2_scheme)]):
+    #this is how annotated works
     credentials_exception = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail="Could not validate credentials",headers={"WWW-Authenticate":"Bearer"})
     token_data = verify_access_token(token,credentials_exception)
     
