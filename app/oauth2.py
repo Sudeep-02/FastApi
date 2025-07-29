@@ -5,16 +5,17 @@ from fastapi.security import OAuth2PasswordBearer
 from .schemas import TokenData          # for API error handling
 from .database import get_session
 from sqlmodel import Session,select
-from . import model
+from .model import User
+from .config import settings
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 #this searching for access_token generated for first time when logged in 
 #so it  is "login" endpoint same as login page or acess_token creation function 
 
 
-SECRET_KEY = "2|[e%VCkE8Vw2e6"
-ALGORITHM = "HS256"                # the algorithm used to sign the token
-ACCESS_TOKEN_EXPIRE_MINUTES = 30   # how long a token lasts, here: 30 minutes
+SECRET_KEY = settings.secret_key
+ALGORITHM = settings.algorithm               # the algorithm used to sign the token
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.access_token_expire_minutes   # how long a token lasts, here: 30 minutes
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
@@ -44,6 +45,7 @@ def get_current_user(token:str = Depends(oauth2_scheme),session: Session = Depen
     credentials_exception = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail="Could not validate credentials",headers={"WWW-Authenticate":"Bearer"})
     token_data = verify_access_token(token,credentials_exception)
     
-    statement = select(model.User).where(model.User.id == token_data.id)
+    statement = select(User.id,User.email,User.created_at).where(User.id == token_data.id)
     result = session.exec(statement).first()
+    print("this is from oauth",result)
     return result

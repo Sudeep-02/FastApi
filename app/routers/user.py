@@ -1,6 +1,6 @@
 from fastapi import APIRouter,status,HTTPException, Depends
 from typing import Optional,List
-from  ..model import UserCreate,UserOut,User
+from ..model import UserCreate,UserOut,User
 from sqlmodel import select,Session
 from ..database import get_session
 from ..utils import password_hash

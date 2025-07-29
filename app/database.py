@@ -1,10 +1,11 @@
 from sqlmodel import  Session, create_engine
+from .config import settings
 
 # STEP 1: Define your PostgreSQL database URL here
-DATABASE_URL = "postgresql://postgres:9362@localhost:5432/fastapi" #postgres is username 
+DATABASE_URL = f"postgresql://{settings.database_username}:{settings.database_password}@{settings.database_hostname}:{settings.database_port}/{settings.database_name}" #postgres is username 
 
 
-engine = create_engine(DATABASE_URL, echo=True)
+engine = create_engine(DATABASE_URL, echo=False)
 
 def get_session():
     return Session(engine)

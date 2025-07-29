@@ -5,7 +5,7 @@ from sqlmodel import Session,select
 from ..model import UserCreate,User
 from ..utils import verify
 from ..oauth2 import create_access_token
-from ..schemas import Token
+from ..schemas  import Token
 router = APIRouter(
     tags=['Authentication']
 )
