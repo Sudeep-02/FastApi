@@ -47,5 +47,5 @@ def get_current_user(token:str = Depends(oauth2_scheme),session: Session = Depen
     
     statement = select(User.id,User.email,User.created_at).where(User.id == token_data.id)
     result = session.exec(statement).first()
-    print("this is from oauth",result)
+    
     return result

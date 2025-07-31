@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, conint
 from sqlmodel import SQLModel
 from pydantic import EmailStr, BaseModel
 from typing import Optional
@@ -15,3 +15,6 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     id: Optional[int] = None
     
+class vote(BaseModel):
+    post_id :int
+    dir: bool

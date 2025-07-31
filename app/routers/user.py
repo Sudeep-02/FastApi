@@ -4,6 +4,8 @@ from ..model import UserCreate,UserOut,User
 from sqlmodel import select,Session
 from ..database import get_session
 from ..utils import password_hash
+
+
 router = APIRouter(
     prefix="/users",
     tags=['users']

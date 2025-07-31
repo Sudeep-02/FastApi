@@ -1,6 +1,6 @@
 # model.py
 from typing import Optional
-from sqlmodel import Field,Relationship
+from sqlmodel import Field,Relationship,SQLModel
 from datetime import datetime
 from .schemas import ForbidExtraBase
 from pydantic import EmailStr,BaseModel
@@ -55,3 +55,6 @@ class PostOut(BaseModel):
     published: bool
     created_at : datetime
     
+class vote(SQLModel,table=True):
+    user_id : int = Field(primary_key=True,foreign_key="user.id",ondelete="CASCADE")
+    post_id : int = Field(primary_key=True,foreign_key="post.id",ondelete="CASCADE")
