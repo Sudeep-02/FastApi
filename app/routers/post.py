@@ -1,46 +1,53 @@
 from typing import List,Optional
 from fastapi import APIRouter,status,HTTPException, Depends
-
+from .. import model
 from app import oauth2
 from ..model import PostCreate,PostUpdate,Post,PostOut
 from sqlmodel import select,Session,or_
 from  ..database import get_session
 from ..oauth2 import get_current_user
+from sqlalchemy import func
+
+
+
 router = APIRouter(
     prefix="/posts",
     tags=['posts']
 )
 
-
-#get all posts
 @router.get("/", response_model=List[PostOut])
 def get_posts(session: Session = Depends(get_session),limit :int = 10,search: Optional[str] = ""):
-    # Make a SELECT query for all posts
-    statement = select(Post)
+    # Single query that gets both Post objects and vote counts
+    statement = (
+        select(Post, func.count(model.vote.post_id).label("votes"))# type: ignore
+        .join(model.vote, model.vote.post_id == Post.id, isouter=True) # type: ignore
+        .group_by(Post.id, Post.title, Post.content, Post.owner_id, Post.published, Post.created_at)# type: ignore
+    )
     
-     # Correct way - use column.contains(search_term)
     if search:
         statement = statement.where(
             or_(
-                Post.title.contains(search),    # Column.contains(search_term) # type: ignore
-                Post.content.contains(search)   # Column.contains(search_term) # type: ignore
+                Post.title.contains(search), # type: ignore
+                Post.content.contains(search) # type: ignore
             )
         )
-    # Apply ordering and limit using SQLModel methods
-    statement = statement.order_by(Post.id.desc()).limit(limit) # type: ignore
     
-    # Execute with SQLModel session
-    posts = session.exec(statement).all()
-    return posts
-    
-    
-    
-    statement = statement.order_by(Post.id.desc()).limit(limit)
-    
-    results = session.exec(statement) # here result is object not data and this can be used in next as medium to get all or single data
-    posts = results.all()  # This returns a list of Post objects
-    print(limit)
-    return posts  # FastAPI/SQLModel automatically converts Post objects to dict for JSON
+    statement = statement.order_by(Post.id.desc()).limit(limit)# type: ignore
+    results = session.exec(statement).all()
+   # Convert results to the expected format
+    return [
+        {
+            "id": post.id,
+            "title": post.title,
+            "content": post.content,
+            "owner_id": post.owner_id,
+            "owner": post.owner,  # Assumes relationship is loaded
+            "published": post.published,
+            "created_at": post.created_at,
+            "votes": votes
+        }
+        for post, votes in results
+    ]
 
 #Create a post
 @router.post("/", response_model=PostOut, status_code=status.HTTP_201_CREATED)

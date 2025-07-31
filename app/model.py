@@ -1,5 +1,5 @@
 # model.py
-from typing import Optional
+from typing import List, Optional
 from sqlmodel import Field,Relationship,SQLModel
 from datetime import datetime
 from .schemas import ForbidExtraBase
@@ -54,7 +54,9 @@ class PostOut(BaseModel):
     owner : UserOut
     published: bool
     created_at : datetime
+    votes: int = 0
     
+
 class vote(SQLModel,table=True):
     user_id : int = Field(primary_key=True,foreign_key="user.id",ondelete="CASCADE")
     post_id : int = Field(primary_key=True,foreign_key="post.id",ondelete="CASCADE")
